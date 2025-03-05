@@ -5,6 +5,55 @@
 
 static NSString *const CHANNEL_NAME = @"open_file";
 
+// Returns the root view controller of the app,
+// or nil if the app has no root view controller.
+static UIViewController *RootViewController() {
+  // If the app is running on iOS 13 or higher, then use the new `connectedScenes`
+  // API to get the root view controller of the key window.
+  if (@available(iOS 13, *)) {
+    // Get a list of all the connected scenes in the app.
+    NSSet *scenes = [[UIApplication sharedApplication] connectedScenes];
+    // Iterate over the scenes and check if each one is a UIWindowScene.
+    for (UIScene *scene in scenes) {
+      if ([scene isKindOfClass:[UIWindowScene class]]) {
+        // Get a list of all the windows in the scene.
+        NSArray *windows = ((UIWindowScene *)scene).windows;
+        // Iterate over the windows and check if each one is the key window.
+        for (UIWindow *window in windows) {
+          if (window.isKeyWindow) {
+            // Return the root view controller of the key window.
+            return window.rootViewController;
+          }
+        }
+      }
+    }
+    // If we couldn't find a key window, then return nil.
+    return nil;
+  } else {
+    // Simply return the root view controller of the key window.
+    return [UIApplication sharedApplication].keyWindow.rootViewController;
+  }
+}
+
+// Returns the top view controller in a view controller hierarchy.
+static UIViewController *
+TopViewControllerForViewController(UIViewController *viewController) {
+  // If the view controller has a presented view controller, then return the top
+  // view controller in that hierarchy.
+  if (viewController.presentedViewController) {
+    return TopViewControllerForViewController(
+        viewController.presentedViewController);
+  }
+  // If the view controller is a navigation controller, then return the top
+  // view controller in the navigation controller's stack.
+  if ([viewController isKindOfClass:[UINavigationController class]]) {
+    return TopViewControllerForViewController(
+        ((UINavigationController *)viewController).visibleViewController);
+  }
+  // Otherwise, return the given view controller.
+  return viewController;
+}
+
 @implementation OpenFilePlugin{
     FlutterResult _result;
     UIViewController *_viewController;
@@ -16,8 +65,9 @@ static NSString *const CHANNEL_NAME = @"open_file";
     FlutterMethodChannel* channel = [FlutterMethodChannel
                                      methodChannelWithName:CHANNEL_NAME
                                      binaryMessenger:[registrar messenger]];
+    UIViewController *rootViewController = RootViewController();
     UIViewController *viewController =
-    [UIApplication sharedApplication].delegate.window.rootViewController;
+              TopViewControllerForViewController(rootViewController);
     OpenFilePlugin* instance = [[OpenFilePlugin alloc] initWithViewController:viewController];
     [registrar addMethodCallDelegate:instance channel:channel];
 }
@@ -44,8 +94,6 @@ static NSString *const CHANNEL_NAME = @"open_file";
         NSFileManager *fileManager=[NSFileManager defaultManager];
         BOOL fileExist=[fileManager fileExistsAtPath:msg];
         if(fileExist){
-            //            NSURL *resourceToOpen = [NSURL fileURLWithPath:msg];
-//            NSString *exestr = [[msg pathExtension] lowercaseString];
             _documentController = [UIDocumentInteractionController interactionControllerWithURL:[NSURL fileURLWithPath:msg]];
             _documentController.delegate = self;
             NSString *uti = call.arguments[@"uti"];
@@ -53,71 +101,13 @@ static NSString *const CHANNEL_NAME = @"open_file";
             if(!isBlank){
                 _documentController.UTI = uti;
             }
-//             else{
-//                 if([exestr isEqualToString:@"rtf"]){
-//                     _documentController.UTI=@"public.rtf";
-//                 }else if([exestr isEqualToString:@"txt"]){
-//                     _documentController.UTI=@"public.plain-text";
-//                 }else if([exestr isEqualToString:@"html"]||
-//                          [exestr isEqualToString:@"htm"]){
-//                     _documentController.UTI=@"public.html";
-//                 }else if([exestr isEqualToString:@"xml"]){
-//                     _documentController.UTI=@"public.xml";
-//                 }else if([exestr isEqualToString:@"tar"]){
-//                     _documentController.UTI=@"public.tar-archive";
-//                 }else if([exestr isEqualToString:@"gz"]||
-//                          [exestr isEqualToString:@"gzip"]){
-//                     _documentController.UTI=@"org.gnu.gnu-zip-archive";
-//                 }else if([exestr isEqualToString:@"tgz"]){
-//                     _documentController.UTI=@"org.gnu.gnu-zip-tar-archive";
-//                 }else if([exestr isEqualToString:@"jpg"]||
-//                          [exestr isEqualToString:@"jpeg"]){
-//                     _documentController.UTI=@"public.jpeg";
-//                 }else if([exestr isEqualToString:@"png"]){
-//                     _documentController.UTI=@"public.png";
-//                 }else if([exestr isEqualToString:@"avi"]){
-//                     _documentController.UTI=@"public.avi";
-//                 }else if([exestr isEqualToString:@"mpg"]||
-//                          [exestr isEqualToString:@"mpeg"]){
-//                     _documentController.UTI=@"public.mpeg";
-//                 }else if([exestr isEqualToString:@"mp4"]){
-//                     _documentController.UTI=@"public.mpeg-4";
-//                 }else if([exestr isEqualToString:@"3gpp"]||
-//                          [exestr isEqualToString:@"3gp"]){
-//                     _documentController.UTI=@"public.3gpp";
-//                 }else if([exestr isEqualToString:@"mp3"]){
-//                     _documentController.UTI=@"public.mp3";
-//                 }else if([exestr isEqualToString:@"zip"]){
-//                     _documentController.UTI=@"com.pkware.zip-archive";
-//                 }else if([exestr isEqualToString:@"gif"]){
-//                     _documentController.UTI=@"com.compuserve.gif";
-//                 }else if([exestr isEqualToString:@"bmp"]){
-//                     _documentController.UTI=@"com.microsoft.bmp";
-//                 }else if([exestr isEqualToString:@"ico"]){
-//                     _documentController.UTI=@"com.microsoft.ico";
-//                 }else if([exestr isEqualToString:@"doc"]){
-//                     _documentController.UTI=@"com.microsoft.word.doc";
-//                 }else if([exestr isEqualToString:@"xls"]){
-//                     _documentController.UTI=@"com.microsoft.excel.xls";
-//                 }else if([exestr isEqualToString:@"ppt"]){
-//                     _documentController.UTI=@"com.microsoft.powerpoint.​ppt";
-//                 }else if([exestr isEqualToString:@"wav"]){
-//                     _documentController.UTI=@"com.microsoft.waveform-​audio";
-//                 }else if([exestr isEqualToString:@"wm"]){
-//                     _documentController.UTI=@"com.microsoft.windows-​media-wm";
-//                 }else if([exestr isEqualToString:@"wmv"]){
-//                     _documentController.UTI=@"com.microsoft.windows-​media-wmv";
-//                 }else if([exestr isEqualToString:@"pdf"]){
-//                     _documentController.UTI=@"com.adobe.pdf";
-//                 }else {
-//                     NSLog(@"doc type not supported for preview");
-//                     NSLog(@"%@", exestr);
-//                 }
-//             }
             @try {
                 BOOL previewSucceeded = [_documentController presentPreviewAnimated:YES];
                 if(!previewSucceeded){
-                    [_documentController presentOpenInMenuFromRect:CGRectMake(500,20,100,100) inView:_viewController.view animated:YES];
+                    UIViewController *rootViewController = RootViewController();
+                    UIViewController *viewController =
+                                TopViewControllerForViewController(rootViewController);
+                    [_documentController presentOpenInMenuFromRect:CGRectMake(500,20,100,100) inView:viewController.view animated:YES];
                 }
             }@catch (NSException *exception) {
                 NSDictionary * dict = @{@"message":@"File opened incorrectly。", @"type":@-4};
@@ -154,7 +144,10 @@ static NSString *const CHANNEL_NAME = @"open_file";
 }
 
 - (UIViewController *)documentInteractionControllerViewControllerForPreview:(UIDocumentInteractionController *)controller {
-    return  _viewController;
+    UIViewController *rootViewController = RootViewController();
+    UIViewController *viewController =
+                        TopViewControllerForViewController(rootViewController);
+    return  viewController;
 }
 
 - (BOOL) isBlankString:(NSString *)string {

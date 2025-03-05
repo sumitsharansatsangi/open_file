@@ -48,11 +48,8 @@ public class OpenFilePlugin implements MethodCallHandler
         , ActivityAware
         , PluginRegistry.RequestPermissionsResultListener
         , PluginRegistry.ActivityResultListener {
-    /**
-     * Plugin registration.
-     */
-    private @Nullable
-    FlutterPluginBinding flutterPluginBinding;
+
+    private @Nullable FlutterPluginBinding flutterPluginBinding;
 
     private Context context;
     private Activity activity;
